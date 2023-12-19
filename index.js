@@ -41,7 +41,7 @@ async function run() {
     })
      // middlewares 
      const verifyToken = (req, res, next) => {
-      // console.log('inside verify token', req.headers.authorization);
+      console.log('inside verify token', req.headers.authorization);
       if (!req.headers.authorization) {
         return res.status(401).send({ message: 'unauthorized access' });
       }
@@ -54,13 +54,29 @@ async function run() {
         next();
       })
     }
-    app.post("/users",async(req,res)=>{
+
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'admin';
+      }
+      res.send({ admin });
+    })
+    app.post("/users", async(req,res)=>{
       
       const users = req.body;
       const result = await usersCollection.insertOne(users);
       res.send(result);
     })
-    app.get("/users",async(req,res)=>{
+    app.get("/users", verifyToken,async(req,res)=>{
       console.log(req.headers);
       const result = await usersCollection.find().toArray();
       res.send(result);
